@@ -1,209 +1,81 @@
 🌫️ Diffusion & Flow Models — Minimal, Clean Implementations
 
-This repository contains a set of mathematically transparent mini-projects exploring modern generative models, including diffusion processes, ODE-based solvers, and flow matching. The goal is to understand how generation-by-noising works from first principles — by building each model step-by-step with clear visualizations and simple 2D datasets.
+This repository contains a set of mathematically transparent mini-projects exploring diffusion models, ODE samplers, and flow-matching. The goal is to understand generative modeling from first principles, with clear visualizations on simple 2D datasets.
 
 🧩 Project Topics
 
-Each notebook focuses on a core idea in diffusion or flow-based generative modeling:
+🌪️ DDPM (Denoising Diffusion Probabilistic Models)
+Forward diffusion, reverse denoising, and noise-matching objective.
 
-🌪️ DDPM — Denoising Diffusion Probabilistic Models
-Forward diffusion, reverse denoising, noise-matching loss, sampling.
-
-🔁 DDIM — Deterministic Sampling (η = 0)
-ODE interpretation, exact 
-𝑥
-0
-x
-0
-	​
-
- reconstruction, fast non-stochastic trajectories.
+🔁 DDIM (Deterministic Sampling)
+ODE interpretation of sampling, exact reconstruction of x₀.
 
 ⚡ DPM-Solver (1st & 2nd Order)
-ODE sampling via exponential integrators, λ-space stepping, midpoint correction.
+Exponential-integrator ODE solvers in λ-space.
 
 🧷 Flow Matching (FM)
-Neural ODE viewpoint, velocity-field learning, Gaussian flow, continuous-time generation.
+Neural ODE generative modeling, velocity fields.
 
 🌀 Toy Dataset Transformations
-Spiral → Gaussian, checkerboard → noise, and reverse sampling demonstrations.
+Spiral → Gaussian, checkerboard → noise, and reverse sampling demos.
 
 📂 Repository Structure
-
-Each notebook is self-contained, with runnable code, equations, and visualizations.
-
-Notebook List
+Notebooks
 Notebook	Description
-DDPM_DDIM.ipynb	Implements DDPM training + DDIM deterministic sampling on 2D datasets
-DPM_Solver.ipynb	Full DPM-Solver implementation (α, σ, λ schedules, 1st/2nd order solvers)
-flow_matching.ipynb	Gaussian flow matching, velocity networks, ODE-based generative mapping
-🔍 Key Concepts Covered
-
+DDPM_DDIM.ipynb	DDPM training + DDIM sampling
+DPM_Solver.ipynb	DPM-Solver (α, σ, λ schedules; 1st/2nd order solvers)
+flow_matching.ipynb	Gaussian Flow Matching + velocity networks
+🔍 Key Concepts Explained
 Forward Process
 
-𝑥
-𝑡
-=
-𝛼
-𝑡
-𝑥
-0
-+
-𝜎
-𝑡
-𝜀
-x
-t
-	​
+The diffusion forward step is:
 
-=α
-t
-	​
+x_t = α(t) · x₀ + σ(t) · ε
 
-x
-0
-	​
 
-+σ
-t
-	​
+where ε ~ N(0, I).
 
-ε
-Visualization of 
-𝑞
-(
-𝑥
-𝑡
-)
-q(x
-t
-	​
+You will see visualizations of q(x_t) gradually becoming a spherical Gaussian.
 
-) across timesteps.
+Noise Prediction Objective (DDPM loss)
 
-Noise Prediction Objective
+The simplified training loss:
 
-𝐿
-=
-𝐸
-∥
-𝜀
-𝜃
-(
-𝑥
-𝑡
-,
-𝑡
-)
-−
-𝜀
-∥
-2
-L=E∥ε
-θ
-	​
+L = E[ || εθ(x_t, t) − ε ||² ]
 
-(x
-t
-	​
+Sampling ODE (Probability Flow ODE)
+dx_t/dt = f(t) · x_t + g(t)² · ∇ₓ log p_t(x)
 
-,t)−ε∥
-2
-.
 
-Sampling ODE
+DPM-Solver integrates this ODE in closed form using λ-parameterization.
 
-𝑥
-˙
-𝑡
-=
-𝑓
-(
-𝑡
-)
-𝑥
-𝑡
-+
-𝑔
-(
-𝑡
-)
-2
-∇
-𝑥
-log
-⁡
-𝑝
-𝑡
-(
-𝑥
-)
-x
-˙
-t
-	​
+DPM-Solver Midpoint Rule (2nd Order)
 
-=f(t)x
-t
-	​
+Predictor step to λ-midpoint
 
-+g(t)
-2
-∇
-x
-	​
-
-logp
-t
-	​
-
-(x).
-
-DPM-Solver Midpoint Rule
-Predictor–corrector update using 
-𝜆
-=
-log
-⁡
-(
-𝛼
-/
-𝜎
-)
-λ=log(α/σ).
+Corrector step using midpoint score
+Improves sample quality and stability with low NFEs.
 
 Flow Matching
-Learn 
-𝑣
-(
-𝑥
-𝑡
-,
-𝑡
-)
-v(x
-t
-	​
 
-,t) instead of noise; generate via continuous ODE integration.
+Learn a velocity field:
 
-📊 Visual Demos Included
+vθ(x_t, t) ≈ dx_t/dt
 
-Evolution of swiss-roll → Gaussian under diffusion
 
-Reverse sampling via DDIM & DPM-Solver
+and integrate it to generate new samples.
 
-Score fields and velocity fields
+📊 Included Visualizations
 
-𝑥
-0
-x
-0
-	​
+Spiral → Gaussian under diffusion
 
--prediction convergence
+DDIM vs DPM-Solver trajectories
 
-Trajectory plots in 2D
+Score vector fields in 2D
+
+Flow Matching velocity fields
+
+Reconstruction trajectories of x₀
 
 🧪 Requirements
 
@@ -221,20 +93,20 @@ jupyter notebook
 
  Add DPM-Solver-3
 
- Add MNIST / CIFAR-10 implementations
+ Add MNIST / CIFAR-10 DDPM
 
  Add Consistency Models
 
- Create unified /src modules
+ Move to /src package structure
 
- Compare Flow Matching vs Diffusion on same datasets
+ FM vs Diffusion comparison study
 
 📚 References
 
-Ho et al. (2020) — Denoising Diffusion Probabilistic Models
+Ho et al., DDPM (2020)
 
-Song et al. (2020) — Denoising Diffusion Implicit Models
+Song et al., DDIM (2020)
 
-Lu et al. (2022) — DPM-Solver: Fast ODE Solvers for Diffusion Models
+Lu et al., DPM-Solver (2022)
 
-Lipman et al. (2023) — Flow Matching for Generative Modeling
+Lipman et al., Flow Matching (2023)
