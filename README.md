@@ -1,104 +1,122 @@
-🧠 Diffusion & Flow Models — Mini-Projects
+Diffusion & Flow Models: From Scratch
 
-This repository contains a set of mini-projects exploring modern generative modeling techniques, including diffusion models, ODE-based solvers, and flow-matching.
-The goal is to understand these models from first principles — using clear mathematics, visualization, and simple 2D datasets.
-
-🧩 Project Topics
-
-Each notebook focuses on a fundamental concept in diffusion-based generative modeling:
-
-🌪️ DDPM (Denoising Diffusion Probabilistic Models)
-Forward diffusion, reverse denoising, and the noise-matching objective.
-
-🔁 DDIM (Deterministic Sampling)
-Non-stochastic sampling based on ODE interpretation.
-
-⚡ DPM-Solver (1st & 2nd Order)
-Fast sampling using ODE solvers in continuous time.
-
-🧷 Flow Matching (FM)
-Learning continuous flows via velocity field supervision.
-
-🌀 Toy Dataset Transformations
-Spiral, swiss-roll, checkerboard, and Gaussian transitions.
+A collection of minimal, clean, and mathematically grounded implementations of modern generative models. This repository explores the evolution from stochastic Diffusion Models to deterministic Flow Matching and Rectified Flow, using 2D toy datasets (Swiss Roll) to visualize the learned vector fields and probability paths.
 
 📂 Repository Structure
 
-This repository contains several Jupyter notebooks.
-Each notebook includes implementation, visualizations, and explanations.
+Notebook
 
-<details> <summary><strong>Click to view notebook breakdown</strong></summary>
-Notebook	Description
-DDPM_DDIM.ipynb	DDPM training and DDIM sampling on 2D datasets
-DPM_Solver.ipynb	DPM-Solver implementation (1st and 2nd order solvers)
-flow_matching.ipynb	Gaussian Flow Matching and velocity-based generation
-</details>
-🔍 Key Concepts Explained
-Forward Process
+Description
 
-The diffusion forward step is defined as:
+Key Concepts
 
-x_t = alpha(t) * x0 + sigma(t) * noise
+DDPM_DDIM.ipynb
 
+The Foundations
 
-As t increases, the data is gradually transformed into Gaussian noise.
+Denoising Diffusion Probabilistic Models (DDPM), Deterministic Sampling (DDIM).
 
-Noise Prediction Objective (DDPM Loss)
+DPM_Solver.ipynb
 
-The model is trained to predict the noise added at time t:
+Fast ODE Solvers
 
-Loss = E[ || predicted_noise - true_noise ||^2 ]
+Higher-order solvers for Diffusion ODEs to reduce sampling steps.
 
-Sampling ODE (Probability Flow ODE)
+flow_matching.ipynb
 
-A continuous-time ODE version of the reverse process:
+State-of-the-Art
 
-dx/dt = drift(x, t) + score_term(x, t)
+Conditional Flow Matching (CFM), Optimal Transport Paths, and Rectified Flow for 1-step generation.
 
+🧠 Theoretical Background
 
-DPM-Solver integrates this ODE efficiently using closed-form updates.
+1. Denoising Diffusion (DDPM & DDIM)
 
-DPM-Solver (2nd Order Midpoint Rule)
+Traditional diffusion models define a forward process that gradually adds Gaussian noise to data $x_0$ over time $t \in [0, T]$:
 
-A fast and accurate solver using:
+$$q(x_t | x_0) = \mathcal{N}(x_t; \sqrt{\bar{\alpha}_t} x_0, (1 - \bar{\alpha}_t) \mathbf{I})
+$$The generative process reverses this by learning to predict the noise $\epsilon$ added at each step. The training objective is simply a weighted Mean Squared Error (MSE) between the actual noise and the predicted noise:
 
-A predictor step
+$$\mathcal{L}*{\text{simple}} = \mathbb{E}*{t, x\_0, \epsilon} \left[ | \epsilon - \epsilon\_\theta(x\_t, t) |^2 \right]
+$$While DDPM models the process as a Stochastic Differential Equation (SDE), **DDIM** and probability flow formulations convert this into an Ordinary Differential Equation (ODE), allowing for deterministic sampling.
 
-A midpoint evaluation
+### 2\. Flow Matching (FM)
 
-A corrector step
+Flow Matching generalizes the Probability Flow ODE. Instead of simulating a diffusion process and deriving the vector field, we **directly define** a probability path and regress the vector field.
 
-This yields better quality at lower number of function evaluations.
+We use the **Optimal Transport (OT) Conditional Flow**, which defines a straight line path between noise $x_0$ and data $x_1$:$$
 
-Flow Matching
+x_t = (1 - t)x_0 + t x_1
+$$The target vector field (velocity) for this path is constant:
 
-Instead of predicting noise, flow matching predicts the velocity:
+$$u_t(x | x_1, x_0) = x_1 - x_0
+$$Objective Function (Conditional Flow Matching):
+We train a neural network $v_\theta(x, t)$ to match this target velocity:
 
-v(x, t) = d/dt [ x_t ]
+$$\mathcal{L}_{CFM}(\theta) = \mathbb{E}_{t, x_0, x_1} \left[ \| v_\theta(x_t, t) - (x_1 - x_0) \|^2 \right]
+$$This results in a model that learns "straight" paths between the noise distribution and the data distribution, which are much easier to integrate than the curved paths of diffusion models.
 
+### 3\. Rectified Flow (Reflow)
 
-Generation is performed by integrating the learned flow field.
+Even with Flow Matching, the learned vector field $v_\theta$ may still be slightly curved due to the coupling between arbitrary noise and data points. **Rectified Flow** solves this by "straightening" the paths iteratively.
 
-📊 Visualizations Included
+**The Reflow Procedure:**
 
-Forward diffusion: spiral → Gaussian
+1.  **Generate Pairs:** Use the pre-trained Flow model to generate data $z_1$ starting from noise $z_0$. This creates a coupling $(z_0, z_1)$ that lies on the same flow trajectory.
+2.  **Retrain:** Train a new model on these specific pairs $(z_0, z_1)$.
+3.  **Result:** The model learns the direct straight line between $z_0$ and $z_1$.
 
-DDIM and DPM-Solver sampling trajectories
+$$\text{Trajectory } (z\_0 \to z\_1) \implies \text{Perfectly Straight Line}
+$$This effectively reduces the discretization error to near zero, enabling high-quality generation in a **single Euler step ($N=1$)**.
 
-Flow Matching velocity fields
+-----
 
-Final reverse-sampled generations
+## 📊 Results
 
-Evolution of q(x_t) over time
+### Flow Matching vs. Rectified Flow
 
-🧪 Requirements
+| Method | Steps | Chamfer Distance (Lower is Better) | Quality |
+| :--- | :--- | :--- | :--- |
+| **Standard FM** | 100 | \~24.1 | ✅ High Fidelity |
+| **Standard FM** | 10 | \~42.8 | ❌ Distorted / Broken |
+| **Rectified Flow** | **10** | **\~29.1** | ✅ **High Fidelity (Fast)** |
+| **Rectified Flow** | **1** | **\< 35.0** | 🚀 **Real-time (1-Step)** |
 
-Install dependencies:
+*(Visualizations of the Swiss Roll manifold transformation are available in the notebooks.)*
 
-pip install torch numpy matplotlib tqdm scikit-learn
+-----
 
+## 🚀 Usage
 
-To launch notebooks:
+1.  **Clone the repository:**
 
-pip install notebook
-jupyter notebook
+    ```bash
+    git clone [https://github.com/EliasSf73/Diffusion-and-Flow-Models-implementations.git](https://github.com/EliasSf73/Diffusion-and-Flow-Models-implementations.git)
+    cd Diffusion-and-Flow-Models-implementations
+    ```
+
+2.  **Install dependencies:**
+
+    ```bash
+    pip install torch numpy matplotlib tqdm
+    ```
+
+3.  **Run the notebooks:**
+    Start with `flow_matching.ipynb` to see the latest Rectified Flow implementation.
+
+    ```bash
+    jupyter notebook
+    ```
+
+-----
+
+## 📚 References
+
+1.  **Denoising Diffusion Probabilistic Models** (Ho et al., 2020)
+2.  **Denoising Diffusion Implicit Models** (Song et al., 2020)
+3.  **Flow Matching for Generative Modeling** (Lipman et al., 2023)
+4.  **Flow Straight and Fast: Learning to Generate and Transfer Data with Rectified Flow** (Liu et al., 2023)
+
+-----
+
+*Author: EliasSf73*$$
